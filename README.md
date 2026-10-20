@@ -4,9 +4,9 @@
 
 Daymark is a small, production-minded task workspace built to demonstrate a complete SaaS flow: email sign-up, protected sessions, and private, persistent task management. Each account can only read and change its own tasks.
 
-**Live demo:** Not deployed yet — add the Vercel URL after connecting the project.
+**Live demo:** [daymark-saas-demo](https://iamzhangjinpeng.github.io/daymark-saas-demo/)
 
-The app preview is available locally after setup. A live link and customer-ready screenshot can be added once the Supabase project is connected and the Vercel deployment is live.
+The repository deploys to GitHub Pages on every push to `main`. Connect Supabase using the repository Actions secrets below to enable real sign-in and task storage.
 
 ## What you can do
 
@@ -25,9 +25,9 @@ There are no sample accounts, fake task records, or password shortcuts. The app 
 | --- | --- |
 | App | Next.js App Router, React, TypeScript |
 | Styling | Tailwind CSS 4 and responsive CSS |
-| Authentication | Supabase Auth with cookie-based SSR sessions |
+| Authentication | Supabase Auth with browser sessions |
 | Database | Supabase Postgres with Row Level Security |
-| Hosting | Vercel |
+| Hosting | GitHub Pages (static export) |
 | Icons | Lucide React |
 
 ## Run locally
@@ -53,7 +53,7 @@ Requires Node.js 20.9 or newer and npm.
 
 4. In the Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql). This creates the `tasks` table, indexes, timestamp trigger, and per-user RLS policies.
 
-5. In **Authentication → URL Configuration**, set the local Site URL to `http://localhost:3000` and add `http://localhost:3000/auth/confirm` to the redirect allow list. For production, add the matching Vercel URL too.
+5. In **Authentication → URL Configuration**, set the local Site URL to `http://localhost:3000` and add `http://localhost:3000/auth/confirm/` to the redirect allow list. For production, add `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` to the allow list.
 
 6. Start the app:
 
@@ -63,9 +63,14 @@ Requires Node.js 20.9 or newer and npm.
 
    Open [http://localhost:3000](http://localhost:3000), create an account, and confirm the email if email confirmation is enabled for the Supabase project.
 
-## Deploy to Vercel
+## Deploy to GitHub Pages
 
-Import this repository into Vercel with the default Next.js settings. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the project environment variables, then deploy. Add the resulting production URL and its `/auth/confirm` callback to Supabase's URL allow list.
+GitHub Actions builds the app as a static site and publishes the `out/` directory. In the repository, open **Settings → Secrets and variables → Actions**, then add these repository secrets:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+The GitHub Pages source should be set to **GitHub Actions**. Push to `main` or run the **Deploy to GitHub Pages** workflow manually. In Supabase, add `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` to the redirect URL allow list. The Supabase URL and publishable key are public browser configuration; never add a secret or service-role key here.
 
 The app deliberately renders a setup guide while the Supabase variables are missing; it never substitutes local storage or pretend authentication.
 
@@ -77,7 +82,7 @@ The browser uses Supabase's publishable key. The `tasks` table requires an authe
 
 ```text
 app/
-  auth/confirm/route.ts  Email confirmation callback
+  auth/confirm/page.tsx  Static email confirmation callback
   dashboard/page.tsx     Protected task workspace
   login/page.tsx         Email sign-in
   signup/page.tsx        Email registration
@@ -85,13 +90,14 @@ components/
   auth-form.tsx          Sign-in and sign-up experience
   dashboard-shell.tsx    Task views and database-backed CRUD
   setup-state.tsx        Supabase connection instructions
-lib/supabase/            Browser, server, and session clients
+lib/supabase/            Browser Supabase client and configuration
 supabase/schema.sql      Tasks table and user-scoped RLS
 ```
 
-## Production build
+## Static production build
 
 ```bash
 npm run build
-npm start
 ```
+
+The exported site is written to `out/`.

@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { withBasePath } from "@/lib/routes";
 
 type TaskStatus = "open" | "completed";
 type TaskPriority = "low" | "normal" | "high";
@@ -228,7 +229,7 @@ export function DashboardShell({
     <main className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand-row">
-          <a className="brand-lockup brand-lockup-dark" href="/dashboard">
+          <a className="brand-lockup brand-lockup-dark" href={withBasePath("/dashboard/")}>
             <span className="brand-mark"><Sparkles size={16} strokeWidth={2.4} /></span>
             <span>daymark</span>
           </a>

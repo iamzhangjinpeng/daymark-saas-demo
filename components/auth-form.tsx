@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { withBasePath } from "@/lib/routes";
 
 type AuthFormProps = { mode: "login" | "signup" };
 
@@ -43,7 +44,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+          emailRedirectTo: `${window.location.origin}${withBasePath("/auth/confirm/")}?next=/dashboard/`,
         },
       });
 
