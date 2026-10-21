@@ -2,7 +2,7 @@
 
 **Make room for what matters.**
 
-Daymark is a small, production-minded task workspace built to demonstrate a complete SaaS flow: email sign-up, protected sessions, and private, persistent task management. Each account can only read and change its own tasks.
+Daymark is a small, production-minded task workspace built to demonstrate a complete SaaS flow: email sign-up, protected sessions, password recovery, and private, persistent task management. Each account can only read and change its own tasks.
 
 **Live demo:** [daymark-saas-demo](https://iamzhangjinpeng.github.io/daymark-saas-demo/)
 
@@ -11,6 +11,7 @@ The repository deploys to GitHub Pages on every push to `main`. Connect Supabase
 ## What you can do
 
 - Create an account with email and password, confirm your email, sign in, and sign out.
+- Request a password reset email and set a new password through the secure recovery link.
 - Create, edit, complete, reopen, search, filter, and delete tasks.
 - Add a description, priority, and optional due date to a task.
 - Keep tasks in Supabase Postgres. Data survives refreshes and is isolated with Row Level Security (RLS).
@@ -21,7 +22,7 @@ There are no sample accounts, fake task records, or password shortcuts. The app 
 
 ## Video walkthrough (recording outline)
 
-Record a 60–90 second walkthrough with two dedicated demo accounts in your Supabase project. The app does not seed demo users or tasks, so create the accounts and example tasks before recording. Use demo-only email addresses and avoid showing passwords, confirmation links, or private data.
+This is a recording outline, not an embedded video. Record the 60–90 second task walkthrough with two dedicated demo accounts in your Supabase project. The app does not seed demo users or tasks, so create the accounts and example tasks before recording. Use demo-only email addresses and avoid showing passwords, confirmation links, or private data.
 
 | Time | On screen |
 | --- | --- |
@@ -32,6 +33,8 @@ Record a 60–90 second walkthrough with two dedicated demo accounts in your Sup
 | 00:50–01:05 | Add a distinct task for Demo B, then refresh to show it persists there. |
 | 01:05–01:20 | Sign back in as Demo A. Show that Demo A’s task is still present and Demo B’s task is not in this workspace. |
 | 01:20–01:30 | End on the live demo URL and repository name. |
+
+For a separate 30–45 second account-access clip, show **Forgot password?** on the sign-in page, submit a demo email, open the prepared reset email, and set a new password on the recovery page. Supabase’s built-in email service is limited to 2 Auth emails per project per hour, so configure custom SMTP or prepare the reset email before recording repeated auth flows.
 
 Suggested narration: “Daymark keeps each signed-in user’s task list separate. Tasks persist across refreshes, and each account can only access its own rows.”
 
@@ -86,7 +89,7 @@ GitHub Actions builds the app as a static site and publishes the `out/` director
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-The GitHub Pages source should be set to **GitHub Actions**. Push to `main` or run the **Deploy to GitHub Pages** workflow manually. In Supabase, add `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` to the redirect URL allow list. The Supabase URL and publishable key are public browser configuration; never add a secret or service-role key here.
+The GitHub Pages source should be set to **GitHub Actions**. Push to `main` or run the **Deploy to GitHub Pages** workflow manually. In Supabase, add both `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` and `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/recovery/` to the redirect URL allow list. The Supabase URL and publishable key are public browser configuration; never add a secret or service-role key here.
 
 The app deliberately renders a setup guide while the Supabase variables are missing; it never substitutes local storage or pretend authentication.
 
@@ -109,12 +112,15 @@ The browser uses Supabase's publishable key. The `tasks` table requires an authe
 ```text
 app/
   auth/confirm/page.tsx  Static email confirmation callback
+  auth/recovery/page.tsx Password recovery callback
   dashboard/page.tsx     Protected task workspace
+  forgot-password/page.tsx Request a password reset email
   login/page.tsx         Email sign-in
   signup/page.tsx        Email registration
 components/
   auth-form.tsx          Sign-in and sign-up experience
   dashboard-shell.tsx    Task views and database-backed CRUD
+  password-recovery.tsx  Password reset request and update
   setup-state.tsx        Supabase connection instructions
 lib/supabase/            Browser Supabase client and configuration
 supabase/schema.sql      Tasks table and user-scoped RLS
