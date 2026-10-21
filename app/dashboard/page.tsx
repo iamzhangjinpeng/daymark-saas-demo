@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardShell, type Task } from "@/components/dashboard-shell";
 import { SetupState } from "@/components/setup-state";
 import { withBasePath } from "@/lib/routes";
@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const configured = hasSupabaseConfig();
   const [workspace, setWorkspace] = useState<{ tasks: Task[]; email: string; userId: string; error: string } | null>(null);
   const [loadFailure, setLoadFailure] = useState(false);
+  const localSignOutRef = useRef(false);
 
   useEffect(() => {
     if (!configured) return;
@@ -81,6 +82,10 @@ export default function DashboardPage() {
         knownUserId = null;
         setWorkspace(null);
         setLoadFailure(false);
+        if (localSignOutRef.current) {
+          localSignOutRef.current = false;
+          return;
+        }
         window.location.replace(withBasePath("/login/"));
         return;
       }
@@ -125,5 +130,14 @@ export default function DashboardPage() {
     );
   }
 
-  return <DashboardShell initialTasks={workspace.tasks} userEmail={workspace.email} userId={workspace.userId} loadError={workspace.error} />;
+  return (
+    <DashboardShell
+      initialTasks={workspace.tasks}
+      userEmail={workspace.email}
+      userId={workspace.userId}
+      loadError={workspace.error}
+      onSignOutStarted={() => { localSignOutRef.current = true; }}
+      onSignOutSettled={() => { localSignOutRef.current = false; }}
+    />
+  );
 }

@@ -59,14 +59,14 @@ async function json(route: Route, body: unknown, status = 200) {
   });
 }
 
-test("keeps task lists separate when switching accounts", async ({ page }) => {
+test("keeps task lists separate when switching accounts across tabs", async ({ page, context }) => {
   const demoUsers = Object.values(users);
   const tasks: DemoTask[] = [
     task(users["demo-a@example.test"], "A private task"),
     task(users["demo-b@example.test"], "B private task"),
   ];
 
-  await page.route("http://127.0.0.1:54321/**", async (route) => {
+  await context.route("http://127.0.0.1:54321/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const authorization = request.headers().authorization ?? "";
@@ -156,12 +156,23 @@ test("keeps task lists separate when switching accounts", async ({ page }) => {
   await page.getByRole("button", { name: "Add to my list" }).click();
   await expect(page.getByText("A's new task", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  const secondTab = await context.newPage();
+  await secondTab.goto("/dashboard/");
+  await expect(secondTab.getByText("A private task", { exact: true })).toBeVisible();
+  await secondTab.getByRole("button", { name: "Sign out" }).click();
+  await expect(secondTab.getByRole("heading", { name: "Sign in to Daymark" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sign in to Daymark" })).toBeVisible();
-  await page.getByLabel("Email address").fill("demo-b@example.test");
-  await page.locator("#password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("A private task", { exact: true })).toHaveCount(0);
 
+  await secondTab.getByLabel("Email address").fill("demo-b@example.test");
+  await secondTab.locator("#password").fill(password);
+  await secondTab.getByRole("button", { name: "Sign in" }).click();
+  await expect(secondTab.getByText("demo-b@example.test", { exact: true })).toBeVisible();
+  await expect(secondTab.getByText("B private task", { exact: true })).toBeVisible();
+  await expect(secondTab.getByText("A private task", { exact: true })).toHaveCount(0);
+  await expect(secondTab.getByText("A's new task", { exact: true })).toHaveCount(0);
+
+  await page.goto("/dashboard/");
   await expect(page.getByText("demo-b@example.test", { exact: true })).toBeVisible();
   await expect(page.getByText("B private task", { exact: true })).toBeVisible();
   await expect(page.getByText("A private task", { exact: true })).toHaveCount(0);

@@ -90,11 +90,15 @@ export function DashboardShell({
   userEmail,
   userId,
   loadError,
+  onSignOutStarted,
+  onSignOutSettled,
 }: {
   initialTasks: Task[];
   userEmail: string;
   userId: string;
   loadError: string;
+  onSignOutStarted: () => void;
+  onSignOutSettled: () => void;
 }) {
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
@@ -255,12 +259,15 @@ export function DashboardShell({
 
   async function signOut() {
     setIsSigningOut(true);
+    onSignOutStarted();
     try {
       const { error } = await createClient().auth.signOut();
       if (error) throw error;
+      onSignOutSettled();
       router.replace("/login");
       router.refresh();
     } catch {
+      onSignOutSettled();
       notify("We couldn’t sign you out. Check your connection and try again.");
       setIsSigningOut(false);
     }
