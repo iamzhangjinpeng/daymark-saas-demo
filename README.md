@@ -20,23 +20,11 @@ The repository deploys to GitHub Pages on every push to `main`. Connect Supabase
 
 There are no sample accounts, fake task records, or password shortcuts. The app requires a Supabase project before authentication and task storage are enabled.
 
-## Video walkthrough (recording outline)
+## Animated product demo
 
-This is a recording outline, not an embedded video. Record the 60–90 second task walkthrough with two dedicated demo accounts in your Supabase project. The app does not seed demo users or tasks, so create the accounts and example tasks before recording. Use demo-only email addresses and avoid showing passwords, confirmation links, or private data.
+![Animated Daymark product walkthrough showing task creation, completion, and separate user workspaces](assets/daymark-demo.gif)
 
-| Time | On screen |
-| --- | --- |
-| 00:00–00:10 | Open the live demo and sign in as Demo A. Show the signed-in account in the sidebar. |
-| 00:10–00:28 | Create “Draft onboarding checklist”; add a short description, high priority, and a due date. |
-| 00:28–00:38 | Refresh the page to show that the task persists in Demo A’s workspace. |
-| 00:38–00:50 | Sign out and sign in as Demo B. Show the different account in the sidebar and its separate task list. |
-| 00:50–01:05 | Add a distinct task for Demo B, then refresh to show it persists there. |
-| 01:05–01:20 | Sign back in as Demo A. Show that Demo A’s task is still present and Demo B’s task is not in this workspace. |
-| 01:20–01:30 | End on the live demo URL and repository name. |
-
-For a separate 30–45 second account-access clip, show **Forgot password?** on the sign-in page, submit a demo email, open the prepared reset email, and set a new password on the recovery page. Supabase’s built-in email service is limited to 2 Auth emails per project per hour, so configure custom SMTP or prepare the reset email before recording repeated auth flows.
-
-Suggested narration: “Daymark keeps each signed-in user’s task list separate. Tasks persist across refreshes, and each account can only access its own rows.”
+The preview uses sample data to show the task workflow and how each account sees its own workspace.
 
 ## Stack
 
