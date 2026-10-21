@@ -15,12 +15,16 @@ export default function ConfirmationPage() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
 
-      if (code && hasSupabaseConfig()) {
-        const { error } = await createClient().auth.exchangeCodeForSession(code);
-        if (!error) {
-          window.location.replace(withBasePath(safeNextPath(params.get("next"))));
-          return;
+      try {
+        if (code && hasSupabaseConfig()) {
+          const { error } = await createClient().auth.exchangeCodeForSession(code);
+          if (!error) {
+            window.location.replace(withBasePath(safeNextPath(params.get("next"))));
+            return;
+          }
         }
+      } catch {
+        // Route failures through the same recovery screen as invalid confirmation links.
       }
 
       window.location.replace(withBasePath("/login/?message=confirmation-error"));

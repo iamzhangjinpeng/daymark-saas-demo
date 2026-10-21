@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -104,6 +104,8 @@ export function DashboardShell({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [pendingId, setPendingId] = useState("");
   const [toast, setToast] = useState("");
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const taskModalTriggerRef = useRef<HTMLElement | null>(null);
 
   const today = localDateString();
   const openTasks = tasks.filter((task) => task.status === "open");
@@ -134,98 +136,119 @@ export function DashboardShell({
     window.setTimeout(() => setToast(""), 3200);
   }
 
-  function openNewTask() {
+  function openNewTask(event: ReactMouseEvent<HTMLButtonElement>) {
+    taskModalTriggerRef.current = event.currentTarget;
     setEditingTask(null);
     setEditorOpen(true);
   }
 
-  function openTaskEditor(task: Task) {
+  function openTaskEditor(task: Task, event: ReactMouseEvent<HTMLButtonElement>) {
+    taskModalTriggerRef.current = event.currentTarget;
     setEditingTask(task);
     setEditorOpen(true);
   }
 
   async function saveTask(draft: TaskDraft) {
     setPendingId("saving");
-    const supabase = createClient();
-    if (editingTask) {
-      const { data, error } = await supabase
-        .from("tasks")
-        .update(draft)
-        .eq("id", editingTask.id)
-        .eq("user_id", userId)
-        .select("id, user_id, title, description, status, priority, due_date, created_at, updated_at")
-        .single();
-      setPendingId("");
-      if (error || !data) {
-        notify(error?.message ?? "This task could not be updated.");
-        return false;
+    try {
+      const supabase = createClient();
+      if (editingTask) {
+        const { data, error } = await supabase
+          .from("tasks")
+          .update(draft)
+          .eq("id", editingTask.id)
+          .eq("user_id", userId)
+          .select("id, user_id, title, description, status, priority, due_date, created_at, updated_at")
+          .single();
+        if (error || !data) {
+          notify(error?.message ?? "This task could not be updated.");
+          return false;
+        }
+        setTasks((current) => current.map((task) => task.id === data.id ? data as Task : task));
+        notify("Task updated.");
+      } else {
+        const { data, error } = await supabase
+          .from("tasks")
+          .insert({ ...draft, user_id: userId })
+          .select("id, user_id, title, description, status, priority, due_date, created_at, updated_at")
+          .single();
+        if (error || !data) {
+          notify(error?.message ?? "This task could not be created.");
+          return false;
+        }
+        setTasks((current) => [data as Task, ...current]);
+        setActiveView("all");
+        setSearch("");
+        notify("Task added to your list.");
       }
-      setTasks((current) => current.map((task) => task.id === data.id ? data as Task : task));
-      notify("Task updated.");
-    } else {
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({ ...draft, user_id: userId })
-        .select("id, user_id, title, description, status, priority, due_date, created_at, updated_at")
-        .single();
+      setEditorOpen(false);
+      return true;
+    } catch {
+      notify("We couldn’t save your task. Check your connection and try again.");
+      return false;
+    } finally {
       setPendingId("");
-      if (error || !data) {
-        notify(error?.message ?? "This task could not be created.");
-        return false;
-      }
-      setTasks((current) => [data as Task, ...current]);
-      setActiveView("all");
-      setSearch("");
-      notify("Task added to your list.");
     }
-    setEditorOpen(false);
-    return true;
   }
 
   async function toggleTask(task: Task) {
     const nextStatus: TaskStatus = task.status === "completed" ? "open" : "completed";
     setPendingId(task.id);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("tasks")
-      .update({ status: nextStatus })
-      .eq("id", task.id)
-      .eq("user_id", userId)
-      .select("id");
-    setPendingId("");
-    if (error || !data?.length) {
-      notify(error?.message ?? "This task could not be updated.");
-      return;
+    try {
+      const { data, error } = await createClient()
+        .from("tasks")
+        .update({ status: nextStatus })
+        .eq("id", task.id)
+        .eq("user_id", userId)
+        .select("id");
+      if (error || !data?.length) {
+        notify(error?.message ?? "This task could not be updated.");
+        return;
+      }
+      setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: nextStatus } : item));
+      notify(nextStatus === "completed" ? "Nicely done. Task completed." : "Task moved back to your list.");
+    } catch {
+      notify("We couldn’t update this task. Check your connection and try again.");
+    } finally {
+      setPendingId("");
     }
-    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: nextStatus } : item));
-    notify(nextStatus === "completed" ? "Nicely done. Task completed." : "Task moved back to your list.");
   }
 
   async function deleteTask(task: Task) {
     const confirmed = window.confirm(`Delete “${task.title}”? This can’t be undone.`);
     if (!confirmed) return;
     setPendingId(task.id);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("tasks")
-      .delete()
-      .eq("id", task.id)
-      .eq("user_id", userId)
-      .select("id");
-    setPendingId("");
-    if (error || !data?.length) {
-      notify(error?.message ?? "This task could not be deleted.");
-      return;
+    try {
+      const { data, error } = await createClient()
+        .from("tasks")
+        .delete()
+        .eq("id", task.id)
+        .eq("user_id", userId)
+        .select("id");
+      if (error || !data?.length) {
+        notify(error?.message ?? "This task could not be deleted.");
+        return;
+      }
+      setTasks((current) => current.filter((item) => item.id !== task.id));
+      notify("Task deleted.");
+    } catch {
+      notify("We couldn’t delete this task. Check your connection and try again.");
+    } finally {
+      setPendingId("");
     }
-    setTasks((current) => current.filter((item) => item.id !== task.id));
-    notify("Task deleted.");
   }
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+    setIsSigningOut(true);
+    try {
+      const { error } = await createClient().auth.signOut();
+      if (error) throw error;
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      notify("We couldn’t sign you out. Check your connection and try again.");
+      setIsSigningOut(false);
+    }
   }
 
   const activeLabel = views.find((view) => view.key === activeView)?.label ?? "All tasks";
@@ -273,7 +296,7 @@ export function DashboardShell({
         <div className="sidebar-account">
           <div className="user-avatar">{initials(userEmail)}</div>
           <div className="user-details"><strong>{userEmail.split("@")[0]}</strong><span>{userEmail}</span></div>
-          <button className="icon-button signout-button" type="button" aria-label="Sign out" title="Sign out" onClick={signOut}><LogOut size={17} /></button>
+          <button className="icon-button signout-button" type="button" aria-label="Sign out" title="Sign out" disabled={isSigningOut} onClick={signOut}><LogOut size={17} /></button>
         </div>
       </aside>
 
@@ -311,8 +334,8 @@ export function DashboardShell({
               <button className="button button-quiet panel-add-button" type="button" onClick={openNewTask}><Plus size={16} /> Add task</button>
             </div>
             <div className="task-toolbar">
-              <div className="task-tabs" role="tablist" aria-label="Task filters">
-                {views.map(({ key, label }) => <button key={key} type="button" role="tab" aria-selected={activeView === key} className={activeView === key ? "selected" : ""} onClick={() => setActiveView(key)}>{label}</button>)}
+              <div className="task-tabs" role="group" aria-label="Task filters">
+                {views.map(({ key, label }) => <button key={key} type="button" aria-pressed={activeView === key} className={activeView === key ? "selected" : ""} onClick={() => setActiveView(key)}>{label}</button>)}
               </div>
               <label className="task-search"><Search size={16} /><input type="search" aria-label="Search tasks" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" /><kbd><Command size={11} />K</kbd></label>
             </div>
@@ -326,7 +349,7 @@ export function DashboardShell({
               </div>
             ) : visibleTasks.length ? (
               <div className="task-list" role="list">
-                {visibleTasks.map((task) => <TaskRow key={task.id} task={task} pending={pendingId === task.id} onToggle={() => toggleTask(task)} onEdit={() => openTaskEditor(task)} onDelete={() => deleteTask(task)} />)}
+                {visibleTasks.map((task) => <TaskRow key={task.id} task={task} pending={pendingId === task.id} onToggle={() => toggleTask(task)} onEdit={(event) => openTaskEditor(task, event)} onDelete={() => deleteTask(task)} />)}
               </div>
             ) : (
               <div className="data-state">
@@ -344,7 +367,7 @@ export function DashboardShell({
       </section>
 
       {toast && <div className="toast-message" role="status"><span className="toast-check"><Check size={14} /></span>{toast}<button type="button" aria-label="Dismiss" onClick={() => setToast("")}><X size={14} /></button></div>}
-      {editorOpen && <TaskEditor key={editingTask?.id ?? "new-task"} task={editingTask} saving={pendingId === "saving"} onClose={() => setEditorOpen(false)} onSave={saveTask} />}
+      {editorOpen && <TaskEditor key={editingTask?.id ?? "new-task"} task={editingTask} saving={pendingId === "saving"} onClose={() => setEditorOpen(false)} onRestoreFocus={() => taskModalTriggerRef.current?.focus()} onSave={saveTask} />}
     </main>
   );
 }
@@ -353,7 +376,7 @@ function SummaryCard({ icon, label, value, detail, color }: { icon: ReactNode; l
   return <div className="summary-card"><div className={`summary-icon ${color}`}>{icon}</div><div className="summary-main"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div><div className={`summary-watermark ${color}`}>{icon}</div></div>;
 }
 
-function TaskRow({ task, pending, onToggle, onEdit, onDelete }: { task: Task; pending: boolean; onToggle: () => void; onEdit: () => void; onDelete: () => void }) {
+function TaskRow({ task, pending, onToggle, onEdit, onDelete }: { task: Task; pending: boolean; onToggle: () => void; onEdit: (event: ReactMouseEvent<HTMLButtonElement>) => void; onDelete: () => void }) {
   const due = dueCopy(task.due_date);
   return (
     <article className={`task-row ${task.status === "completed" ? "task-row-completed" : ""}`} role="listitem">
@@ -377,12 +400,50 @@ function TaskRow({ task, pending, onToggle, onEdit, onDelete }: { task: Task; pe
   );
 }
 
-function TaskEditor({ task, saving, onClose, onSave }: { task: Task | null; saving: boolean; onClose: () => void; onSave: (draft: TaskDraft) => Promise<boolean> }) {
+function TaskEditor({ task, saving, onClose, onRestoreFocus, onSave }: { task: Task | null; saving: boolean; onClose: () => void; onRestoreFocus: () => void; onSave: (draft: TaskDraft) => Promise<boolean> }) {
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "normal");
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
   const [validation, setValidation] = useState("");
+  const modalRef = useRef<HTMLElement>(null);
+  const savingRef = useRef(saving);
+  const onCloseRef = useRef(onClose);
+  savingRef.current = saving;
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const modal = modalRef.current;
+    modal?.querySelector<HTMLElement>("#task-title")?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!savingRef.current) onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !modal) return;
+
+      const focusable = Array.from(modal.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      onRestoreFocus();
+    };
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -401,7 +462,7 @@ function TaskEditor({ task, saving, onClose, onSave }: { task: Task | null; savi
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
-      <section className="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+      <section ref={modalRef} className="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title" tabIndex={-1}>
         <div className="modal-heading"><div><span className="modal-kicker">MAKE IT YOUR NEXT STEP</span><h2 id="task-modal-title">{task ? "Edit task" : "Add a task"}</h2></div><button className="icon-button modal-close" type="button" aria-label="Close" disabled={saving} onClick={onClose}><X size={19} /></button></div>
         <form className="task-form" onSubmit={submit}>
           <label className="field-label" htmlFor="task-title">Task name <span className="required-mark">*</span></label>

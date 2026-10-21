@@ -92,7 +92,7 @@ The app deliberately renders a setup guide while the Supabase variables are miss
 
 ## Data security
 
-The browser uses Supabase's publishable key. The `tasks` table requires an authenticated user and has separate select, insert, update, and delete RLS policies tied to `auth.uid()`. The `user_id` is assigned by the database on insert. Route checks improve navigation, while RLS remains the data access boundary.
+The browser uses Supabase's publishable key. The `tasks` table requires an authenticated user and has separate select, insert, update, and delete RLS policies tied to `auth.uid()`. The app scopes each request to the signed-in user's ID; RLS verifies that ID against the authenticated session. The database default provides the same ID when an insert omits it. Route checks improve navigation, while RLS remains the data access boundary.
 
 ## Project structure
 
@@ -117,3 +117,7 @@ npm run build
 ```
 
 The exported site is written to `out/`.
+
+## Automated smoke checks
+
+Run `npm run test:e2e` to check sign-in, switching between two isolated task lists, task creation, and the sign-in layout at tablet and phone widths. The test uses a mocked Supabase API and does not access or modify your Supabase project; the database RLS policies remain the production security boundary.

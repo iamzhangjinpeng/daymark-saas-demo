@@ -37,40 +37,44 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
 
     setIsPending(true);
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    if (isSignup) {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}${withBasePath("/auth/confirm/")}?next=/dashboard/`,
-        },
-      });
+      if (isSignup) {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}${withBasePath("/auth/confirm/")}?next=/dashboard/`,
+          },
+        });
 
-      if (signUpError) {
-        setError(signUpError.message);
-      } else if (data.session) {
-        router.replace("/dashboard");
-        router.refresh();
+        if (signUpError) {
+          setError(signUpError.message);
+        } else if (data.session) {
+          router.replace("/dashboard");
+          router.refresh();
+        } else {
+          setNotice("Check your inbox for a confirmation link. Your workspace will be ready as soon as you confirm your email.");
+        }
       } else {
-        setNotice("Check your inbox for a confirmation link. Your workspace will be ready as soon as you confirm your email.");
-      }
-    } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
-      if (signInError) {
-        setError(signInError.message);
-      } else {
-        router.replace("/dashboard");
-        router.refresh();
+        if (signInError) {
+          setError(signInError.message);
+        } else {
+          router.replace("/dashboard");
+          router.refresh();
+        }
       }
+    } catch {
+      setError("We couldn’t connect to Daymark. Check your connection and try again.");
+    } finally {
+      setIsPending(false);
     }
-
-    setIsPending(false);
   }
 
   return (

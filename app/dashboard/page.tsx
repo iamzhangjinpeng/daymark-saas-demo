@@ -12,6 +12,7 @@ const taskFields = "id, user_id, title, description, status, priority, due_date,
 export default function DashboardPage() {
   const configured = hasSupabaseConfig();
   const [workspace, setWorkspace] = useState<{ tasks: Task[]; email: string; userId: string; error: string } | null>(null);
+  const [loadFailure, setLoadFailure] = useState(false);
 
   useEffect(() => {
     if (!configured) return;
@@ -20,27 +21,43 @@ export default function DashboardPage() {
     const supabase = createClient();
 
     async function loadWorkspace() {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (cancelled) return;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (sessionError) throw sessionError;
+        if (!session) {
+          window.location.replace(withBasePath("/login/"));
+          return;
+        }
 
-      if (!user) {
-        window.location.replace(withBasePath("/login/"));
-        return;
-      }
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (authError?.status === 401 || (!user && !authError)) {
+          window.location.replace(withBasePath("/login/"));
+          return;
+        }
+        if (authError) throw authError;
+        if (!user) {
+          window.location.replace(withBasePath("/login/"));
+          return;
+        }
 
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(taskFields)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        const { data, error } = await supabase
+          .from("tasks")
+          .select(taskFields)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
 
-      if (!cancelled) {
-        setWorkspace({
-          tasks: (data ?? []) as Task[],
-          email: user.email ?? "",
-          userId: user.id,
-          error: error?.message ?? authError?.message ?? "",
-        });
+        if (!cancelled) {
+          setWorkspace({
+            tasks: (data ?? []) as Task[],
+            email: user.email ?? "",
+            userId: user.id,
+            error: error?.message ?? "",
+          });
+        }
+      } catch {
+        if (!cancelled) setLoadFailure(true);
       }
     }
 
@@ -49,6 +66,18 @@ export default function DashboardPage() {
   }, [configured]);
 
   if (!configured) return <SetupState />;
+  if (loadFailure) {
+    return (
+      <main className="setup-screen" aria-live="polite">
+        <div className="setup-card">
+          <span className="eyebrow">DAYMARK WORKSPACE</span>
+          <h1>Your workspace didn’t load.</h1>
+          <p className="setup-intro">Check your connection, then try again. Your saved tasks are still in your account.</p>
+          <button className="button button-primary" type="button" onClick={() => window.location.reload()}>Try again</button>
+        </div>
+      </main>
+    );
+  }
   if (!workspace) {
     return (
       <main className="setup-screen" aria-live="polite">
