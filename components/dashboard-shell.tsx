@@ -88,10 +88,12 @@ function initials(email: string) {
 export function DashboardShell({
   initialTasks,
   userEmail,
+  userId,
   loadError,
 }: {
   initialTasks: Task[];
   userEmail: string;
+  userId: string;
   loadError: string;
 }) {
   const router = useRouter();
@@ -150,6 +152,7 @@ export function DashboardShell({
         .from("tasks")
         .update(draft)
         .eq("id", editingTask.id)
+        .eq("user_id", userId)
         .select("id, user_id, title, description, status, priority, due_date, created_at, updated_at")
         .single();
       setPendingId("");
@@ -162,7 +165,7 @@ export function DashboardShell({
     } else {
       const { data, error } = await supabase
         .from("tasks")
-        .insert(draft)
+        .insert({ ...draft, user_id: userId })
         .select("id, user_id, title, description, status, priority, due_date, created_at, updated_at")
         .single();
       setPendingId("");
@@ -187,6 +190,7 @@ export function DashboardShell({
       .from("tasks")
       .update({ status: nextStatus })
       .eq("id", task.id)
+      .eq("user_id", userId)
       .select("id");
     setPendingId("");
     if (error || !data?.length) {
@@ -206,6 +210,7 @@ export function DashboardShell({
       .from("tasks")
       .delete()
       .eq("id", task.id)
+      .eq("user_id", userId)
       .select("id");
     setPendingId("");
     if (error || !data?.length) {

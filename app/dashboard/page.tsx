@@ -11,7 +11,7 @@ const taskFields = "id, user_id, title, description, status, priority, due_date,
 
 export default function DashboardPage() {
   const configured = hasSupabaseConfig();
-  const [workspace, setWorkspace] = useState<{ tasks: Task[]; email: string; error: string } | null>(null);
+  const [workspace, setWorkspace] = useState<{ tasks: Task[]; email: string; userId: string; error: string } | null>(null);
 
   useEffect(() => {
     if (!configured) return;
@@ -31,12 +31,14 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from("tasks")
         .select(taskFields)
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!cancelled) {
         setWorkspace({
           tasks: (data ?? []) as Task[],
           email: user.email ?? "",
+          userId: user.id,
           error: error?.message ?? authError?.message ?? "",
         });
       }
@@ -55,5 +57,5 @@ export default function DashboardPage() {
     );
   }
 
-  return <DashboardShell initialTasks={workspace.tasks} userEmail={workspace.email} loadError={workspace.error} />;
+  return <DashboardShell initialTasks={workspace.tasks} userEmail={workspace.email} userId={workspace.userId} loadError={workspace.error} />;
 }
