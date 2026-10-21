@@ -69,7 +69,7 @@ Requires Node.js 20.9 or newer and npm.
 
 4. In the Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql). This creates the `tasks` table, indexes, timestamp trigger, and per-user RLS policies.
 
-5. In **Authentication → URL Configuration**, set the local Site URL to `http://localhost:3000` and add `http://localhost:3000/auth/confirm/` to the redirect allow list. For production, add `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` to the allow list.
+5. In **Authentication → URL Configuration**, set the local Site URL to `http://localhost:3000` and add `http://localhost:3000/auth/confirm/` and `http://localhost:3000/auth/recovery/` to the redirect allow list. For production, add `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` and `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/recovery/` to the allow list.
 
 6. Start the app:
 
@@ -89,6 +89,16 @@ GitHub Actions builds the app as a static site and publishes the `out/` director
 The GitHub Pages source should be set to **GitHub Actions**. Push to `main` or run the **Deploy to GitHub Pages** workflow manually. In Supabase, add `https://iamzhangjinpeng.github.io/daymark-saas-demo/auth/confirm/` to the redirect URL allow list. The Supabase URL and publishable key are public browser configuration; never add a secret or service-role key here.
 
 The app deliberately renders a setup guide while the Supabase variables are missing; it never substitutes local storage or pretend authentication.
+
+## Verify database isolation
+
+The browser smoke test uses a mocked Supabase API. To verify the actual database RLS policies, create and confirm two disposable test accounts in a staging Supabase project, then set `RLS_TEST_SUPABASE_URL`, `RLS_TEST_SUPABASE_PUBLISHABLE_KEY`, `RLS_TEST_USER_A_EMAIL`, `RLS_TEST_USER_A_PASSWORD`, `RLS_TEST_USER_B_EMAIL`, and `RLS_TEST_USER_B_PASSWORD` in your local environment and run:
+
+```bash
+npm run verify:rls
+```
+
+The script signs in as both test users, creates tagged rows, checks cross-account read/insert/update/delete restrictions, and removes the rows it created. It uses only the publishable key and must only be run against a staging project with disposable accounts; never provide a service-role key or customer account credentials.
 
 ## Data security
 

@@ -125,7 +125,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
             <div className="password-label-row">
               <label className="field-label" htmlFor="password">Password</label>
-              <span className="password-hint">At least 6 characters</span>
+              {isSignup ? <span className="password-hint">At least 6 characters</span> : <Link className="password-reset-link" href="/forgot-password/">Forgot password?</Link>}
             </div>
             <div className="input-wrap">
               <LockKeyhole size={17} aria-hidden="true" />

@@ -106,6 +106,7 @@ export function DashboardShell({
   const [toast, setToast] = useState("");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const taskModalTriggerRef = useRef<HTMLElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const today = localDateString();
   const openTasks = tasks.filter((task) => task.status === "open");
@@ -130,6 +131,20 @@ export function DashboardShell({
         return b.created_at.localeCompare(a.created_at);
       });
   }, [activeView, search, tasks, today]);
+
+  useEffect(() => {
+    if (editorOpen) return;
+
+    function focusSearch(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", focusSearch);
+    return () => document.removeEventListener("keydown", focusSearch);
+  }, [editorOpen]);
 
   function notify(message: string) {
     setToast(message);
@@ -261,11 +276,10 @@ export function DashboardShell({
             <span className="brand-mark"><Sparkles size={16} strokeWidth={2.4} /></span>
             <span>daymark</span>
           </a>
-          <button className="workspace-switch" type="button" aria-label="Personal workspace">
+          <div className="workspace-switch">
             <span className="workspace-avatar">{initials(userEmail)}</span>
             <span className="workspace-switch-copy"><strong>Personal</strong><small>Free workspace</small></span>
-            <ChevronDown size={15} />
-          </button>
+          </div>
         </div>
 
         <div className="sidebar-scroll">
@@ -337,7 +351,7 @@ export function DashboardShell({
               <div className="task-tabs" role="group" aria-label="Task filters">
                 {views.map(({ key, label }) => <button key={key} type="button" aria-pressed={activeView === key} className={activeView === key ? "selected" : ""} onClick={() => setActiveView(key)}>{label}</button>)}
               </div>
-              <label className="task-search"><Search size={16} /><input type="search" aria-label="Search tasks" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" /><kbd><Command size={11} />K</kbd></label>
+              <label className="task-search"><Search size={16} /><input ref={searchInputRef} type="search" aria-label="Search tasks" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" /><kbd><Command size={11} />K</kbd></label>
             </div>
 
             {loadError ? (

@@ -18,37 +18,46 @@ export default function DashboardPage() {
     if (!configured) return;
 
     let cancelled = false;
+    let loadGeneration = 0;
+    let knownUserId: string | null = null;
     const supabase = createClient();
 
     async function loadWorkspace() {
+      const generation = ++loadGeneration;
+      setLoadFailure(false);
+
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (cancelled) return;
+        if (cancelled || generation !== loadGeneration) return;
         if (sessionError) throw sessionError;
         if (!session) {
+          setWorkspace(null);
           window.location.replace(withBasePath("/login/"));
           return;
         }
 
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (cancelled) return;
+        if (cancelled || generation !== loadGeneration) return;
         if (authError?.status === 401 || (!user && !authError)) {
+          setWorkspace(null);
           window.location.replace(withBasePath("/login/"));
           return;
         }
         if (authError) throw authError;
         if (!user) {
+          setWorkspace(null);
           window.location.replace(withBasePath("/login/"));
           return;
         }
 
+        knownUserId = user.id;
         const { data, error } = await supabase
           .from("tasks")
           .select(taskFields)
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
-        if (!cancelled) {
+        if (!cancelled && generation === loadGeneration) {
           setWorkspace({
             tasks: (data ?? []) as Task[],
             email: user.email ?? "",
@@ -57,12 +66,42 @@ export default function DashboardPage() {
           });
         }
       } catch {
-        if (!cancelled) setLoadFailure(true);
+        if (!cancelled && generation === loadGeneration) setLoadFailure(true);
       }
     }
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") {
+        knownUserId = session?.user.id ?? null;
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
+        loadGeneration += 1;
+        knownUserId = null;
+        setWorkspace(null);
+        setLoadFailure(false);
+        window.location.replace(withBasePath("/login/"));
+        return;
+      }
+
+      const nextUserId = session?.user.id;
+      if (nextUserId && knownUserId && nextUserId !== knownUserId) {
+        // Clear cached rows before reloading under the newly active account.
+        loadGeneration += 1;
+        knownUserId = nextUserId;
+        setWorkspace(null);
+        setLoadFailure(false);
+        window.location.replace(withBasePath("/dashboard/"));
+      }
+    });
+
     void loadWorkspace();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      loadGeneration += 1;
+      subscription.unsubscribe();
+    };
   }, [configured]);
 
   if (!configured) return <SetupState />;
